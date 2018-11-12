@@ -6,13 +6,10 @@
             [hiccups.runtime :as hiccupsrt]
             [secretary.core :as secretary :refer-macros [defroute]]
             [goog.events :as events]
-            [goog.history.EventType :as EventType]
-
-            )
+            [goog.history.EventType :as EventType])
   (:require-macros [promesa.core]
                    [hiccups.core :as hiccups :refer [html]])
-  (:import goog.history.Html5History)
-  )
+  (:import goog.history.Html5History))
 
 (defonce history (doto (Html5History.)
                    (events/listen
@@ -25,18 +22,22 @@
 (secretary/set-config! :prefix "#")
 
 
-(def cognito-pool-id "us-east-1:df130540-5cda-4432-aa21-bf1e325f493d")
-(def bucket-name "klick-meetingrooms-anonymous")
+(def env {:region "us-east-1"
+          :rooms-file "rooms.edn"
+          :bucket-name "klick-meetingrooms-anonymous"
+          :cognito-pool-id "us-east-1:df130540-5cda-4432-aa21-bf1e325f493d"})
 
-(def aws-config {:region      "us-east-1"
-                 :credentials (AWS/CognitoIdentityCredentials. #js {:IdentityPoolId cognito-pool-id })})
+(def aws-config {:region (env :region)
+                 :credentials (AWS/CognitoIdentityCredentials. #js {:IdentityPoolId (env :cognito-pool-id) })})
 
 (AWS/config.update (clj->js aws-config))
 
-(defonce rooms-s3 (s3-atom aws-config "klick-meetingrooms-anonymous" "rooms.edn"))
+(defonce rooms-s3 (s3-atom aws-config (env :bucket-name) (env :rooms-file)))
 (defonce rooms (atom {}))
 
-(defn fetch-rooms [cb]
+(defn fetch-rooms
+  "Fetch the rooms from S3"
+  [cb]
   (-> @rooms-s3
       (p/then (fn [data]
                 (reset! rooms data)
@@ -44,10 +45,9 @@
       (p/catch (fn [err]
                  (js/alert err)))))
 
-(defn -file-from-string [s type]
-  (js/Blob. [s] #js {:type type}))
-
-(defn nthify [n]
+(defn nthify
+  "Handle the weird 1st, 2nd, 3rd thing in English"
+  [n]
   (when n
     (str n
          (let [rem (mod n 100)]
@@ -59,7 +59,9 @@
                3 "rd"
                "th"))))))
 
-(defn get-room [room-id]
+(defn get-room
+  "Pull the room info out of the rooms database"
+  [room-id]
   (get-in @rooms [:rooms (keyword room-id)]))
 
 (defn room-names
@@ -76,7 +78,9 @@
               room-name          (room-names room-val)]
           [room-name room-id])))
 
-(defn print-promise [p]
+(defn print-promise
+  "For internal use only"
+  [p]
   (-> p
           (p/then #(prn 'SUCCESS %))
           (p/catch #(prn 'FAIL %))))
@@ -92,27 +96,20 @@
   (aset el "innerHTML" content))
 
 
-(defn room-edit [room-id]
-  [:form ])
-
 (defn room-header [room]
-  [:h4.header  {:style "display: inline" } (:name room)
+  [:h4.header {:style "display: inline" } (:name room)
    [:br.hide-on-med-and-up]
    [:h5.grey-text  {:style "display: inline" }
     " ("
     (when (:floor room)
-      (str
-       (nthify (:floor room))
-       " "))
+      (str (nthify (:floor room)) " "))
     (when (:tower room)
       (:tower room))
     ")"]])
 
 (defn generate-room [room-id]
   (let [room (get-room room-id)]
-    [:div
-
-     (room-header room)
+    [:div (room-header room)
 
      (when-let [aliases (:aliases room)]
        (when-not (empty? aliases)
@@ -229,7 +226,7 @@
   [{:keys [roomid name tower floor aliases description]}]
   [:div
    [:form {:id :edit-form}
-    (input-text {:label "Room-ID" :name "roomid" :value roomid :readonly (when-not roomid true) :type :text})
+    (input-text {:label "Room-ID" :name "roomid" :value roomid :readonly (when roomid true) :type :text})
     (input-text {:label "name" :name "name" :value name  :type :text})
     (input-text {:label "Tower" :name "tower" :value tower :type :text})
     (input-text {:label "Floor" :name "floor" :value floor :type :number})
