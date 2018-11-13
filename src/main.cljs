@@ -6,7 +6,9 @@
             [hiccups.runtime :as hiccupsrt]
             [secretary.core :as secretary :refer-macros [defroute]]
             [goog.events :as events]
-            [goog.history.EventType :as EventType])
+            [goog.history.EventType :as EventType]
+            [components :refer [input-text input-textarea]]
+            [clojure.string :as str])
   (:require-macros [promesa.core]
                    [hiccups.core :as hiccups :refer [html]])
   (:import goog.history.Html5History))
@@ -158,7 +160,6 @@
                                                                count
                                                                (> 1))})))
                        (js/window.scrollTo 0 0))
-
                      (not-found)))
                  0))
 
@@ -174,43 +175,6 @@
   (act-on-url!)
   )
 
-
-(defn input-text
-  "An input element which updates its value on change"
-  [{:keys [id type value required placeholder readonly label] :as params}]
-  (let [id (or id (str (random-uuid)))]
-    [:span
-     (when label
-       [:label {:for id} label])
-     [:input (merge {:id (name id)
-                     :name (name (get params :name))
-                     :class "form-control"
-                     :type (name type)
-                     :value value}
-                    (when placeholder {:placeholder (if (and (= type "text")
-                                                           placeholder)
-                                                    placeholder
-                                                    "")})
-                    (when required {:required "required"})
-                    (when readonly {:readonly "readonly"}))]]))
-
-(defn input-textarea
-  [{:keys [label id type value required readonly rows cols style] :as params}]
-  (let [id (or id (str (random-uuid)))]
-    [:span
-     (when label
-       [:label {:for id} label])
-     [:textarea (merge {:id    (name id)
-                        :name  (name (get params :name))
-                        :class "form-control"
-                        :type  (name type)
-                        :style style
-                        }
-                       (when required {:required "required"})
-                       (when readonly {:readonly "readonly"})
-                       (when rows {:rows rows})
-                       (when cols {:cols cols}))
-      value]]))
 
 
 
@@ -230,7 +194,7 @@
     (input-text {:label "name" :name "name" :value name  :type :text})
     (input-text {:label "Tower" :name "tower" :value tower :type :text})
     (input-text {:label "Floor" :name "floor" :value floor :type :number})
-    (input-text {:label "Aliases" :name "aliases" :value aliases :type :text})
+    (input-text {:label "Aliases" :name "aliases" :value (str/join ", " aliases) :type :text})
     (input-textarea {:label "Description" :name "description" :value description :type :textarea :rows 6 :style "height: 10em"})
     [:div "here we upload and delete pics! Upload just throws it onto s3 and links it in the database."]
     [:div "do we do DDB stuff here or through a lambda?"]
