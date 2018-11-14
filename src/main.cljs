@@ -202,7 +202,7 @@
     [:pre room]
     (for [pic pictures
           :let [img-url (str "https://s3.amazonaws.com/klick-meetingrooms-anonymous/pics/" pic)]]
-      (deletable-image img-url))
+      (deletable-image pic img-url))
     [:div "here we upload and delete pics! Upload just throws it onto s3 and links it in the database."]
     [:div "do we do DDB stuff here or through a lambda?"]
     [:button {:onclick "(function(){

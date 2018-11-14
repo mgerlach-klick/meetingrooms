@@ -42,9 +42,16 @@
       value]]))
 
 (defn deletable-image
-  [img-src]
+  [img-name img-src]
   [:div {:style "position: relative;"}
-   [:i.material-icons.close.noselect "close"]
+   [:i.material-icons.close.noselect
+    {:onclick (str "if(confirm(\"Are you sure you want to delete this picture?\"))  {
+  room[\"pictures\"] = room[\"pictures\"].filter(function(item){
+      return item !== \"" img-name "\";
+  });
+$(this).parent().fadeOut(300, function(){$(this).remove()});
+}")}
+    "close"]
   [:img {:src img-src
          :style "position: relative; max-width: 200px; max-height: 200px;"}]]
   )
