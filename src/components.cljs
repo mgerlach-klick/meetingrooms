@@ -59,4 +59,31 @@ $(this).parent().fadeOut(300, function(){$(this).remove()});
 (defn image-upload-area
   "Show current images and allow deletion. Add new images."
   []
+  [:div.box
+   [:div.box__input
+    [:input.box__file {:type "file" :name "files[]" :id "file" :multiple "multiple"}]
+    [:label {:for "file"} [:strong "Choose a file"] "or drag it here"]
+  ]
+   [:div.box__uploading "Resizing & Uploading &hellip;"]
+   [:div.box_error "Error!"]
+   (.eval js/window "
+console.log('image-upload-area');
+$form = $(\"#file\");
+var droppedFiles = false;
+
+  $form.on('drag dragstart dragend dragover dragenter dragleave drop', function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+  })
+  .on('dragover dragenter', function() {
+    $form.addClass('is-dragover');
+  })
+  .on('dragleave dragend drop', function() {
+    $form.removeClass('is-dragover');
+  })
+  .on('drop', function(e) {
+    droppedFiles = e.originalEvent.dataTransfer.files;
+    console.log(\"dropped files:\", droppedFiles);
+  });")
+   ]
   )

@@ -7,7 +7,7 @@
             [secretary.core :as secretary :refer-macros [defroute]]
             [goog.events :as events]
             [goog.history.EventType :as EventType]
-            [components :refer [input-text input-textarea deletable-image]]
+            [components :refer [input-text input-textarea deletable-image image-upload-area]]
             [clojure.string :as str])
   (:require-macros [promesa.core]
                    [hiccups.core :as hiccups :refer [html]])
@@ -200,34 +200,14 @@
     (input-text {:label "Aliases" :name "aliases" :value (str/join ", " aliases) :type :text})
     (input-textarea {:label "Description" :name "description" :value description :type :textarea :rows 6 :style "height: 10em"})
     [:pre room]
+    [:label "Images"]
     (for [pic pictures
           :let [img-url (str "https://s3.amazonaws.com/klick-meetingrooms-anonymous/pics/" pic)]]
       (deletable-image pic img-url))
+    (image-upload-area)
     [:div "here we upload and delete pics! Upload just throws it onto s3 and links it in the database."]
     [:div "do we do DDB stuff here or through a lambda?"]
-    [:button {:onclick "(function(){
-(function ($) {
-    $.fn.serializeFormJSON = function () {
-
-        var o = {};
-        var a = this.serializeArray();
-        $.each(a, function () {
-            if (o[this.name]) {
-                if (!o[this.name].push) {
-                    o[this.name] = [o[this.name]];
-                }
-                o[this.name].push(this.value || '');
-            } else {
-                o[this.name] = this.value || '';
-            }
-        });
-        return o;
-    };
-})(jQuery);
-
-data = $('form').serializeFormJSON();
-main.save_room(data);
-})();"}  "Save"]]])
+    [:button {:onclick "main.save_room(room) "}  "Save"]]])
 
 
 (defroute room-path "/room/:room" [room]
