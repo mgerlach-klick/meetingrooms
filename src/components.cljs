@@ -14,7 +14,8 @@
                      :name (name (get params :name))
                      :class "form-control"
                      :type (name type)
-                     :value value}
+                     :value value
+                     :onchange "room[this.name] = this.value;"}
                     (when placeholder {:placeholder (if (and (= type "text")
                                                            placeholder)
                                                     placeholder
@@ -39,3 +40,16 @@
                        (when rows {:rows rows})
                        (when cols {:cols cols}))
       value]]))
+
+(defn deletable-image
+  [img-src]
+  [:div {:style "position: relative;"}
+   [:i.material-icons.close.noselect "close"]
+  [:img {:src img-src
+         :style "position: relative; max-width: 200px; max-height: 200px;"}]]
+  )
+
+(defn image-upload-area
+  "Show current images and allow deletion. Add new images."
+  []
+  )

@@ -7,7 +7,7 @@
             [secretary.core :as secretary :refer-macros [defroute]]
             [goog.events :as events]
             [goog.history.EventType :as EventType]
-            [components :refer [input-text input-textarea]]
+            [components :refer [input-text input-textarea deletable-image]]
             [clojure.string :as str])
   (:require-macros [promesa.core]
                    [hiccups.core :as hiccups :refer [html]])
@@ -94,8 +94,12 @@
 (def application
   (js/document.getElementById "app"))
 
-(defn set-html! [el content]
-  (aset el "innerHTML" content))
+(defn set-html!
+  ([el content]
+   (aset el "innerHTML" content))
+  ([el content javascript]
+   (set-html! el content)
+   (.eval js/window javascript)))
 
 
 (defn room-header [room]
@@ -138,8 +142,7 @@
 
      [:hr]
      [:a.right {:href (str "#/room/" (name room-id) "/edit")}
-      "Edit this page"]
-     ]))
+      "Edit this page"]]))
 
 
 (defn not-found []
@@ -187,7 +190,7 @@
                                 ])))
 
 (defn edit-form
-  [{:keys [roomid name tower floor aliases description]}]
+  [{:keys [roomid name tower floor aliases description pictures] :as room}]
   [:div
    [:form {:id :edit-form}
     (input-text {:label "Room-ID" :name "roomid" :value roomid :readonly (when roomid true) :type :text})
@@ -196,19 +199,47 @@
     (input-text {:label "Floor" :name "floor" :value floor :type :number})
     (input-text {:label "Aliases" :name "aliases" :value (str/join ", " aliases) :type :text})
     (input-textarea {:label "Description" :name "description" :value description :type :textarea :rows 6 :style "height: 10em"})
+    [:pre room]
+    (for [pic pictures
+          :let [img-url (str "https://s3.amazonaws.com/klick-meetingrooms-anonymous/pics/" pic)]]
+      (deletable-image img-url))
     [:div "here we upload and delete pics! Upload just throws it onto s3 and links it in the database."]
     [:div "do we do DDB stuff here or through a lambda?"]
-    [:button "Save"]]])
+    [:button {:onclick "(function(){
+(function ($) {
+    $.fn.serializeFormJSON = function () {
+
+        var o = {};
+        var a = this.serializeArray();
+        $.each(a, function () {
+            if (o[this.name]) {
+                if (!o[this.name].push) {
+                    o[this.name] = [o[this.name]];
+                }
+                o[this.name].push(this.value || '');
+            } else {
+                o[this.name] = this.value || '';
+            }
+        });
+        return o;
+    };
+})(jQuery);
+
+data = $('form').serializeFormJSON();
+main.save_room(data);
+})();"}  "Save"]]])
 
 
 (defroute room-path "/room/:room" [room]
   (show-room application (keyword room)))
 
 (defroute room-edit-path "/room/:roomid/edit" [roomid]
-  (let [room (get-room roomid)]
-    (.log js/console "room from getroom: " room)
-    (set-html! application (html
-                            (edit-form (merge {:roomid roomid} room))))))
+  (let [room* (get-room roomid)]
+    (prn "room from getroom: " room*)
+    (let [room (merge {:roomid roomid} room*)]
+      (set-html! application (html (edit-form room))
+                 (str
+                  "var room = " (.stringify js/JSON (clj->js room) nil 2) ";")))))
 
 (defroute edit-path "/room/new" []
   (set-html! application (html
@@ -217,6 +248,9 @@
 ;; Catch all
 (defroute "*" []
   (not-found))
+
+(defn ^:export save-room [msg]
+  (js/alert (js->clj msg :keywordize-keys true)))
 
 (defn hook-autocompleter!
   "Set up autocompleter"
