@@ -26,7 +26,8 @@
 (def env {:region "us-east-1"
           :rooms-file "rooms.edn"
           :bucket-name "klick-meetingrooms-anonymous"
-          :cognito-pool-id "us-east-1:df130540-5cda-4432-aa21-bf1e325f493d"})
+          :cognito-pool-id "us-east-1:df130540-5cda-4432-aa21-bf1e325f493d"
+          :s3url "https://s3.amazonaws.com/klick-meetingrooms-anonymous/pics/"})
 
 (def aws-config {:region (env :region)
                  :credentials (AWS/CognitoIdentityCredentials. #js {:IdentityPoolId (env :cognito-pool-id) })})
@@ -182,46 +183,28 @@
   [{:keys [roomid name tower floor aliases description pictures] :as room}]
   (add-js (str "var room = " (.stringify js/JSON (clj->js room) nil 2) ";"))
   (reset! components/my-atom room)
-  [:div
-   [:form {:id :edit-form}
-    (input-text {:label "Room-ID" :name "roomid" :value roomid :readonly (when roomid true) :type :text})
-    (input-text {:label "name" :name "name" :value name  :type :text})
-    (input-text {:label "Tower" :name "tower" :value tower :type :text})
-    (input-text {:label "Floor" :name "floor" :value floor :type :number})
-    (input-text {:label "Aliases" :name "aliases" :value (str/join ", " aliases) :type :text})
-    (input-textarea {:label "Description" :name "description" :value description :type :textarea :rows 6 :style "height: 10em"})
-    [:pre room]
-    [:label "Images"]
-    (for [pic pictures
-          :let [img-url (str "https://s3.amazonaws.com/klick-meetingrooms-anonymous/pics/" pic)]]
-      (deletable-image pic img-url))
-    (image-upload-area)
-    (.eval js/window "
-setTimeout(function(){
-  dropContainer = document.getElementById('drop-zone');
-  dropContainer.ondragover = dropContainer.ondragenter = function(evt) {
-      dropContainer.classList.add('mouse-over');
-    evt.preventDefault();
-  };
+  (let [atm components/my-atom]
+    [:div
+     [:form {:id :edit-form}
+      (input-text {:label "Room-ID" :name "roomid" :value roomid :readonly (when roomid true) :type :text :atm atm})
+      (input-text {:label "Room Name" :name "name" :value name :type :text :atm atm})
+      (input-text {:label "Tower" :name "tower" :value tower :type :text :atm atm})
+      (input-text {:label "Floor" :name "floor" :value floor :type :number :atm atm})
+      (input-text {:label "Aliases" :name "aliases" :value (str/join ", " aliases) :type :text :atm atm})
+      (input-textarea {:label "Description" :name "description" :value description :type :textarea :rows 6 :style "height: 10em" :atm atm})
 
- dropContainer.ondragleave = function(evt) {
-      dropContainer.classList.remove('mouse-over');
-    evt.preventDefault();
-  };
+      [:div
+       [:label "Images"]
+       [:div#image-container
+        (for [pic  pictures
+              :let [img-url (str (env :s3url) pic)]]
+          (deletable-image pic img-url :pictures atm))]]
 
+      (image-upload-area {:atm atm :kw :pictures})
 
-  dropContainer.ondrop = function(evt) {
-    evt.preventDefault();
-    dropContainer.classList.remove('mouse-over');
-    console.log(evt.dataTransfer.files);
-    Array.from(evt.dataTransfer.files).forEach(f => console.log(f.name))
-  };
-}, 0);
-")
-
-    [:div "here we upload and delete pics! Upload just throws it onto s3 and links it in the database."]
-    [:div "do we do DDB stuff here or through a lambda?"]
-    [:button {:onclick "main.save_room(room) "}  "Save"]]])
+      [:div "here we upload and delete pics! Upload just throws it onto s3 and links it in the database."]
+      [:div "do we do DDB stuff here or through a lambda?"]
+      [:button {:onclick "main.save_room(room) "}  "Save"]]]))
 
 
 (defroute room-path "/room/:room" [room]

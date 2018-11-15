@@ -63,3 +63,11 @@
     border: 2px dashed rgba(0,0,0,.5);
     color: rgba(0,0,0,.5);
 }
+
+#image-container {
+    display: flex;
+}
+
+.deletable-image {
+    margin: 10px;
+}

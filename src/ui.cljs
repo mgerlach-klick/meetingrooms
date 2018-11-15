@@ -31,3 +31,16 @@
   ([el content javascript]
    (set-html! el content)
    (.eval js/window javascript)))
+
+(defn by-id [^String id]
+  (let [idstr (if (.startsWith id "#")
+                id
+                (str "#" id))]
+    (jquery (str "#" id))))
+
+
+(defn on-event [el event fn]
+         (.on el event fn))
+
+(defn event-val [event]
+  (.. event -target -value))
