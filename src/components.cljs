@@ -1,6 +1,7 @@
 (ns components
-  (:require [hiccups.runtime :as hiccupsrt])
-  (:require-macros [hiccups.core :as hiccups :refer [html]]))
+  (:require [hiccups.runtime :as hiccupsrt]
+            [ui :refer [jquery execute-js! add-js set-html!]])
+  )
 
 
 (defn input-text
@@ -41,49 +42,42 @@
                        (when cols {:cols cols}))
       value]]))
 
+(def ^:export my-atom (atom {}))
+(defn ^:export confirm []
+  (swap! my-atom assoc :floor (.val (js/$ "input[name='floor']")) :max :worked :time (js/Date.))
+  (if (js/confirm "confirm me")
+    (js/alert "yes")
+    (js/alert "no")))
+
+(defn ^:export printatom []
+  (prn @my-atom))
+
 (defn deletable-image
   [img-name img-src]
-  [:div {:style "position: relative;"}
-   [:i.material-icons.close.noselect
-    {:onclick (str "if(confirm(\"Are you sure you want to delete this picture?\"))  {
-  room[\"pictures\"] = room[\"pictures\"].filter(function(item){
-      return item !== \"" img-name "\";
-  });
-$(this).parent().fadeOut(300, function(){$(this).remove()});
-}")}
-    "close"]
-  [:img {:src img-src
-         :style "position: relative; max-width: 200px; max-height: 200px;"}]]
+  (let [close-id (str (random-uuid))]
+    (add-js (fn []
+              (let [el (jquery (str "#" close-id))]
+                (prn "installing click handler for " el)
+                (.click el
+                        (fn []
+                          (when (js/confirm "Are you sure you want to delete this picture?")
+                            (do
+                              (swap! my-atom assoc :pictures (disj (set (:pictures @my-atom)) img-name))
+                              (-> el (.fadeOut 300 #(.remove el))))))))))
+
+    [:div {:id    close-id
+           :style "position: relative;"}
+     [:i.material-icons.close.noselect "close"]
+     [:img {:src   img-src
+            :style "position: relative; max-width: 200px; max-height: 200px;"}]])
   )
 
 (defn image-upload-area
   "Show current images and allow deletion. Add new images."
   []
-  [:div.box
-   [:div.box__input
-    [:input.box__file {:type "file" :name "files[]" :id "file" :multiple "multiple"}]
-    [:label {:for "file"} [:strong "Choose a file"] "or drag it here"]
-  ]
-   [:div.box__uploading "Resizing & Uploading &hellip;"]
-   [:div.box_error "Error!"]
-   (.eval js/window "
-console.log('image-upload-area');
-$form = $(\"#file\");
-var droppedFiles = false;
-
-  $form.on('drag dragstart dragend dragover dragenter dragleave drop', function(e) {
-    e.preventDefault();
-    e.stopPropagation();
-  })
-  .on('dragover dragenter', function() {
-    $form.addClass('is-dragover');
-  })
-  .on('dragleave dragend drop', function() {
-    $form.removeClass('is-dragover');
-  })
-  .on('drop', function(e) {
-    droppedFiles = e.originalEvent.dataTransfer.files;
-    console.log(\"dropped files:\", droppedFiles);
-  });")
-   ]
-  )
+  (add-js (fn []
+            (-> (.getElementById js/document "drop-zone")
+                (.-ondragenter)
+                (set! #(prn "Drag me, drag me :D")))))
+  [:div#drop-zone
+   [:strong "Drop image(s) here"]])

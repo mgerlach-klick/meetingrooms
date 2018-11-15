@@ -3,14 +3,13 @@
             [promesa.core :as p]
             [s3atom :refer [s3-atom]]
             [imageupload]
-            [hiccups.runtime :as hiccupsrt]
             [secretary.core :as secretary :refer-macros [defroute]]
             [goog.events :as events]
             [goog.history.EventType :as EventType]
             [components :refer [input-text input-textarea deletable-image image-upload-area]]
+            [ui :refer [jquery execute-js! add-js set-html! ]]
             [clojure.string :as str])
-  (:require-macros [promesa.core]
-                   [hiccups.core :as hiccups :refer [html]])
+  (:require-macros [promesa.core])
   (:import goog.history.Html5History))
 
 (defonce history (doto (Html5History.)
@@ -36,6 +35,10 @@
 
 (defonce rooms-s3 (s3-atom aws-config (env :bucket-name) (env :rooms-file)))
 (defonce rooms (atom {}))
+
+(def application
+  (js/document.getElementById "app"))
+
 
 (defn fetch-rooms
   "Fetch the rooms from S3"
@@ -88,19 +91,6 @@
           (p/catch #(prn 'FAIL %))))
 
 
-(defn jquery [sel]
-  (js/jQuery sel))
-
-(def application
-  (js/document.getElementById "app"))
-
-(defn set-html!
-  ([el content]
-   (aset el "innerHTML" content))
-  ([el content javascript]
-   (set-html! el content)
-   (.eval js/window javascript)))
-
 
 (defn room-header [room]
   [:h4.header {:style "display: inline" } (:name room)
@@ -115,6 +105,16 @@
 
 (defn generate-room [room-id]
   (let [room (get-room room-id)]
+
+    (add-js (fn []
+              (-> (jquery ".slider")
+                  (.slider (clj->js {"full_width" false
+                                     "indicators" (-> (get-room room-id)
+                                                      :pictures
+                                                      count
+                                                      (> 1))})))
+              (js/window.scrollTo 0 0)))
+
     [:div (room-header room)
 
      (when-let [aliases (:aliases room)]
@@ -146,25 +146,14 @@
 
 
 (defn not-found []
-  (set-html! application (html [:p.flow-text "This doesn't look like anything to me..."])))
+  (set-html! application [:p.flow-text "This doesn't look like anything to me..."]))
 
 
 (defn show-room [el room-id]
   ;; that way this is in the same animation frame and the indicator doesn't flicker
-  (js/setTimeout (fn []
-                   (if (get-room room-id)
-                     (do
-                       (set-html! el (html (generate-room room-id)))
-
-                       (-> (jquery ".slider")
-                           (.slider (clj->js {"full_width" false
-                                              "indicators" (-> (get-room room-id)
-                                                               :pictures
-                                                               count
-                                                               (> 1))})))
-                       (js/window.scrollTo 0 0))
-                     (not-found)))
-                 0))
+  (if (get-room room-id)
+    (set-html! el (generate-room room-id))
+    (not-found)))
 
 (defn ^:export set-room-id [room-id]
   (.setToken history (str "/room/" (name room-id))))
@@ -182,15 +171,17 @@
 
 
 (defroute home-path "/" []
-  (set-html! application (html [:span
-                                [:p.section.flow-text "Just search for the meeting room by tapping on the search bar above! It supports fuzzy search and as soon as there is only one option left it will automatically load the result!"]
-                                [:p.section.flow-text "If you prefer a map with all the rooms take a look at the " [:a {:href "https://genome.klick.com/map/index.html#/"} "Seating Map"]]
-                                [:p.section.flow-text "Feel free to link directly to the URLs of the meeting rooms, I will keep the URLs stable."]
-                                [:p.section.flow-text "Please also help by contributing to this site by offering corrections, better instructions, additions, comments, and all that. There is a link through which you can email at the bottom of every page."]
-                                ])))
+  (set-html! application [:span
+                          [:p.section.flow-text "Just search for the meeting room by tapping on the search bar above! It supports fuzzy search and as soon as there is only one option left it will automatically load the result!"]
+                          [:p.section.flow-text "If you prefer a map with all the rooms take a look at the " [:a {:href "https://genome.klick.com/map/index.html#/"} "Seating Map"]]
+                          [:p.section.flow-text "Feel free to link directly to the URLs of the meeting rooms, I will keep the URLs stable."]
+                          [:p.section.flow-text "Please also help by contributing to this site by offering corrections, better instructions, additions, comments, and all that. There is a link through which you can email at the bottom of every page."]
+                          ]))
 
 (defn edit-form
   [{:keys [roomid name tower floor aliases description pictures] :as room}]
+  (add-js (str "var room = " (.stringify js/JSON (clj->js room) nil 2) ";"))
+  (reset! components/my-atom room)
   [:div
    [:form {:id :edit-form}
     (input-text {:label "Room-ID" :name "roomid" :value roomid :readonly (when roomid true) :type :text})
@@ -205,6 +196,29 @@
           :let [img-url (str "https://s3.amazonaws.com/klick-meetingrooms-anonymous/pics/" pic)]]
       (deletable-image pic img-url))
     (image-upload-area)
+    (.eval js/window "
+setTimeout(function(){
+  dropContainer = document.getElementById('drop-zone');
+  dropContainer.ondragover = dropContainer.ondragenter = function(evt) {
+      dropContainer.classList.add('mouse-over');
+    evt.preventDefault();
+  };
+
+ dropContainer.ondragleave = function(evt) {
+      dropContainer.classList.remove('mouse-over');
+    evt.preventDefault();
+  };
+
+
+  dropContainer.ondrop = function(evt) {
+    evt.preventDefault();
+    dropContainer.classList.remove('mouse-over');
+    console.log(evt.dataTransfer.files);
+    Array.from(evt.dataTransfer.files).forEach(f => console.log(f.name))
+  };
+}, 0);
+")
+
     [:div "here we upload and delete pics! Upload just throws it onto s3 and links it in the database."]
     [:div "do we do DDB stuff here or through a lambda?"]
     [:button {:onclick "main.save_room(room) "}  "Save"]]])
@@ -217,13 +231,10 @@
   (let [room* (get-room roomid)]
     (prn "room from getroom: " room*)
     (let [room (merge {:roomid roomid} room*)]
-      (set-html! application (html (edit-form room))
-                 (str
-                  "var room = " (.stringify js/JSON (clj->js room) nil 2) ";")))))
+      (set-html! application (edit-form room)))))
 
 (defroute edit-path "/room/new" []
-  (set-html! application (html
-                          (edit-form {:floor 6 :description "test"}))))
+  (set-html! application (edit-form {:floor 6 :description "test"})))
 
 ;; Catch all
 (defroute "*" []

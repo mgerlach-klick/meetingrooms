@@ -36,18 +36,30 @@
                                   supported by Chrome and Opera */
 }
 
-
-.box__uploading,
-.box__success,
-.box__error {
-    display: none;
+#drop-zone {
+    /*Sort of important*/
+    width: 300px;
+    /*Sort of important*/
+    height: 200px;
+    left:50%;
+    top:100px;
+    border: 2px dashed rgba(0,0,0,.3);
+    border-radius: 20px;
+    font-family: Arial;
+    text-align: center;
+    line-height: 180px;
+    font-size: 20px;
+    color: rgba(0,0,0,.3);
 }
 
-.box {
-    background-color: white;
-    outline: 2px dashed black;
-    outline-offset: -10px;
+/*Important*/
+#drop-zone.mouse-over {
+    border: 2px dashed red;// rgba(0,0,0,.5);
+    /* color: rgba(0,0,0,.5); */
+    color: red;
 }
-.box .box__dragndrop {
-    display: inline;
+
+#drop-zone:hover{
+    border: 2px dashed rgba(0,0,0,.5);
+    color: rgba(0,0,0,.5);
 }
