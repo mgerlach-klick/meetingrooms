@@ -7,6 +7,7 @@
             [components :refer [input-text input-textarea deletable-image image-upload-area]]
             [ui :refer [jquery execute-js! add-js set-html! ]]
             [clojure.string :as str]
+            [config :refer [env] :as config]
             [aws])
   (:require-macros [promesa.core])
   (:import goog.history.Html5History))
@@ -21,17 +22,7 @@
 
 (secretary/set-config! :prefix "#")
 
-
-(def env {:region "us-east-1"
-          :rooms-file "rooms.edn"
-          :bucket-name "klick-meetingrooms-anonymous"
-          :cognito-pool-id "us-east-1:df130540-5cda-4432-aa21-bf1e325f493d"
-          :s3url "https://s3.amazonaws.com/klick-meetingrooms-anonymous/pics/"})
-
-(def aws-config {:region (env :region)
-                 :credentials (AWS/CognitoIdentityCredentials. #js {:IdentityPoolId (env :cognito-pool-id) })})
-
-(aws/configure-aws aws-config)
+(aws/configure-aws config/aws-config)
 
 (defonce rooms (atom {}))
 
@@ -41,8 +32,9 @@
 (defn room-change-autouploader
   [_ _ _ new-state]
   (prn "uploading new rooms state to s3")
-  (p/then (aws/update-rooms& env new-state)
-          (prn "Successfully updated rooms on s3")))
+  (-> (aws/update-rooms& (assoc env :last-updated (js/Date.)) new-state)
+      (p/then #(prn "Successfully updated rooms on s3"))
+      (p/catch (fn [err] (prn "Error updating room: " err)))))
 
 (defn fetch-rooms
   "Fetch the rooms from S3"
@@ -93,8 +85,8 @@
   "For internal use only"
   [p]
   (-> p
-          (p/then #(prn 'SUCCESS %))
-          (p/catch #(prn 'FAIL %))))
+      (p/then #(prn 'SUCCESS %))
+      (p/catch #(prn 'FAIL %))))
 
 
 
@@ -186,9 +178,15 @@
 
 (defn edit-form
   [{:keys [roomid name tower floor aliases description pictures] :as room}]
-  (add-js (str "var room = " (.stringify js/JSON (clj->js room) nil 2) ";"))
   (reset! components/my-atom room)
   (let [atm components/my-atom]
+    (add-js (fn []
+              (ui/on-click
+               (ui/by-id :savebtn)
+               (fn []
+                 (prn "saving room")
+                 (swap! rooms assoc roomid @atm )))))
+
     [:div
      [:form {:id :edit-form}
       (input-text {:label "Room-ID" :name "roomid" :value roomid :readonly (when roomid true) :type :text :atm atm})
@@ -209,7 +207,7 @@
 
       [:div "here we upload and delete pics! Upload just throws it onto s3 and links it in the database."]
       [:div "do we do DDB stuff here or through a lambda?"]
-      [:button {:onclick "main.save_room(room) "}  "Save"]]]))
+      [:button#savebtn "Save"]]]))
 
 
 (defroute room-path "/room/:room" [room]
@@ -227,9 +225,6 @@
 ;; Catch all
 (defroute "*" []
   (not-found))
-
-(defn ^:export save-room [msg]
-  (js/alert (js->clj msg :keywordize-keys true)))
 
 (defn hook-autocompleter!
   "Set up autocompleter"
@@ -268,7 +263,7 @@
      (act-on-url!))))
 
 (comment
- ;; data model
+  ;; data model
   {:version "date"
    :rooms   {:roomname {:name        "Name"
                         :floor       7

@@ -33,10 +33,10 @@
    (.eval js/window javascript)))
 
 (defn by-id [^String id]
-  (let [idstr (if (.startsWith id "#")
-                id
-                (str "#" id))]
-    (jquery (str "#" id))))
+  (let [idstr (if (.startsWith (name id) "#")
+                (name id)
+                (str "#" (name id)))]
+    (jquery (str "#" (name id)))))
 
 
 (defn on-event [el event fn]

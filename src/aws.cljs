@@ -3,6 +3,7 @@
             [cljs.reader :as reader]
             [cljs.core :refer [IPrintWithWriter IDeref IReset ISwap]]
             ["aws-sdk" :as AWS]
+            [config]
             [clojure.string :as str])
   (:require-macros [promesa.core]))
 
