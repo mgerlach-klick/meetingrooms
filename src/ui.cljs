@@ -20,7 +20,6 @@
 
 (defn add-js
   [script]
-  (prn 'add-js script)
   (swap! +javascripts+ conj script))
 
 (defn set-html!

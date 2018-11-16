@@ -1,14 +1,13 @@
 (ns main
   (:require ["aws-sdk" :as AWS]
             [promesa.core :as p]
-            [s3atom :refer [s3-atom]]
-            [imageupload]
             [secretary.core :as secretary :refer-macros [defroute]]
             [goog.events :as events]
             [goog.history.EventType :as EventType]
             [components :refer [input-text input-textarea deletable-image image-upload-area]]
             [ui :refer [jquery execute-js! add-js set-html! ]]
-            [clojure.string :as str])
+            [clojure.string :as str]
+            [aws])
   (:require-macros [promesa.core])
   (:import goog.history.Html5History))
 
@@ -32,21 +31,27 @@
 (def aws-config {:region (env :region)
                  :credentials (AWS/CognitoIdentityCredentials. #js {:IdentityPoolId (env :cognito-pool-id) })})
 
-(AWS/config.update (clj->js aws-config))
+(aws/configure-aws aws-config)
 
-(defonce rooms-s3 (s3-atom aws-config (env :bucket-name) (env :rooms-file)))
 (defonce rooms (atom {}))
 
 (def application
   (js/document.getElementById "app"))
 
+(defn room-change-autouploader
+  [_ _ _ new-state]
+  (prn "uploading new rooms state to s3")
+  (p/then (aws/update-rooms& env new-state)
+          (prn "Successfully updated rooms on s3")))
 
 (defn fetch-rooms
   "Fetch the rooms from S3"
   [cb]
-  (-> @rooms-s3
+  (-> (aws/download-edn&  (env :bucket-name) (env :rooms-file))
       (p/then (fn [data]
+                (remove-watch rooms :auto-upload)
                 (reset! rooms data)
+                (add-watch rooms :auto-upload room-change-autouploader)
                 (cb data)))
       (p/catch (fn [err]
                  (js/alert err)))))
@@ -84,7 +89,7 @@
               room-name          (room-names room-val)]
           [room-name room-id])))
 
-(defn print-promise
+(defn print-oromise
   "For internal use only"
   [p]
   (-> p
@@ -132,7 +137,7 @@
           [:ul.slides
            (for [img images]
              [:li
-              [:img {:src (str "https://s3.amazonaws.com/klick-meetingrooms-anonymous/pics/" img)}]])]]))
+              [:img {:src (str (env :s3url) img)}]])]]))
 
      (when-let [more (:moreinfo room)]
        (when-not (empty? more)
@@ -252,15 +257,15 @@
   (fetch-rooms
    (fn []
      (prn "FETCHED ROOMS: " (-> @rooms :rooms keys))
-     (hook-autocompleter! (@rooms :rooms)))))
+     (hook-autocompleter! (@rooms :rooms))
+     (act-on-url!))))
 
 (defn -main []
-  (set-html! application "<h1> first load! </h1>")
-  (secretary/dispatch! (str js/window.location.hash)) ;; for reloads
   (fetch-rooms
    (fn []
      (prn "FETCHED ROOMS: " (-> @rooms :rooms keys))
-     (hook-autocompleter! (@rooms :rooms)))))
+     (hook-autocompleter! (@rooms :rooms))
+     (act-on-url!))))
 
 (comment
  ;; data model
