@@ -20,6 +20,7 @@
 
 (defn add-js
   [script]
+  (prn 'add-js script)
   (swap! +javascripts+ conj script))
 
 (defn set-html!
@@ -40,7 +41,15 @@
 
 
 (defn on-event [el event fn]
-         (.on el event fn))
+  (.on el (name event) fn))
 
 (defn event-val [event]
   (.. event -target -value))
+
+(defn on-click [el fn]
+  (on-event el "click" fn))
+
+(defn append-hiccup [el hcp]
+  (.append el (html hcp))
+  (execute-js! @+javascripts+)
+  (reset! +javascripts+ []))

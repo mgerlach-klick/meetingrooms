@@ -66,6 +66,7 @@
 
 #image-container {
     display: flex;
+    flex-wrap: wrap;
 }
 
 .deletable-image {

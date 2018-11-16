@@ -1,7 +1,7 @@
 (ns components
   (:require [hiccups.runtime :as hiccupsrt]
             [ui :refer [jquery execute-js! add-js set-html! on-event by-id] :as ui])
-  )
+  (:require-macros [hiccups.core :refer [html]]))
 
 
 (defn input-text
@@ -68,7 +68,7 @@
   (let [close-id (str (random-uuid))]
     (add-js (fn []
               (let [el (ui/by-id close-id)]
-                (ui/on-event el "click"
+                (ui/on-click el
                         (fn []
                           (when (js/confirm "Are you sure you want to delete this picture?")
                             (do
@@ -81,8 +81,7 @@
      [:i.material-icons.close.noselect {:id close-id}
                                         "close"]
      [:img {:src   img-src
-            :style "position: relative; max-width: 200px; max-height: 200px;"}]])
-  )
+            :style "position: relative; max-width: 200px; max-height: 200px;"}]]))
 
 (defn image-upload-area
   "Show current images and allow deletion. Add new images."
@@ -107,12 +106,17 @@
   }; ")
   (add-js (fn []
             (on-event (by-id "drop-zone")
-                      "drop"
+                      :drop
                       (fn [evt]
                           (doseq [file (array-seq (.. evt -originalEvent -dataTransfer -files))]
                             (let [file-name (str (random-uuid) ".png")]
                               ;;(upload-file! file file-name)
                               (swap! atm update-in [kw] conj file-name)
+                              (ui/append-hiccup (ui/by-id "image-container")
+                                                (deletable-image (str (random-uuid))
+                                                                 "https://clojure.org/images/clojure-logo-120b.png"
+                                                                 :pictures
+                                                                 atm))
                               (prn 'yayfile (.-name file) file-name)))))))
   [:div#drop-zone
    [:strong "Drop new image(s) here"]])
