@@ -67,6 +67,9 @@
   [room-id]
   (get-in @rooms [:rooms (keyword room-id)]))
 
+(defn update-room [room-id val]
+  (swap! rooms assoc-in [:rooms (keyword room-id)] val ))
+
 (defn room-names
   "Returns all the names of a given room, including the floor and tower"
   [{:keys [name aliases floor tower]}]
@@ -183,18 +186,25 @@
     (add-js (fn []
               (ui/on-click
                (ui/by-id :savebtn)
-               (fn []
-                 (prn "saving room")
-                 (swap! rooms assoc roomid @atm )))))
+               (fn [e]
+                 (.preventDefault e)
+                 (let [roomid (get @atm :roomid)]
+                   (prn "saving room" roomid @atm)
+                   (update-room roomid @atm)
+                   (.then
+                    (js/swal #js {:title "Saved!" :type "success"})
+                    #(go-to-room roomid)
+                    (prn 'done)))
+                 false))))
 
     [:div
      [:form {:id :edit-form}
-      (input-text {:label "Room-ID" :name "roomid" :value roomid :readonly (when roomid true) :type :text :atm atm})
-      (input-text {:label "Room Name" :name "name" :value name :type :text :atm atm})
-      (input-text {:label "Tower" :name "tower" :value tower :type :text :atm atm})
-      (input-text {:label "Floor" :name "floor" :value floor :type :number :atm atm})
-      (input-text {:label "Aliases" :name "aliases" :value (str/join ", " aliases) :type :text :atm atm})
-      (input-textarea {:label "Description" :name "description" :value description :type :textarea :rows 6 :style "height: 10em" :atm atm})
+      (input-text {:label "Room-ID" :name "roomid" :placeholder "room101" :value roomid :required true :readonly (when roomid true) :type :text :atm atm :transform-save (fn [s] (str/replace s #"[^A-Za-z0-9-_]" "_"))})
+      (input-text {:label "Room Name" :name "name" :required true :placeholder "Room Name" :value name :type :text :atm atm})
+      (input-text {:label "Tower" :name "tower" :required true :placeholder "North or South" :value tower :type :text :atm atm})
+      (input-text {:label "Floor" :name "floor" :required true :placeholder "1" :value floor :type :number :atm atm})
+      (input-text {:label "Aliases" :name "aliases" :placeholder "Room 101, Winston" :value aliases :type :text :atm atm :transform-save (fn [s] (str/split s #",\s*")) :transform-display (fn [arr] (str/join ", " arr))})
+      (input-textarea {:label "Walking Instructions" :required true :name "description" :placeholder "" :value description :type :textarea :rows 6 :style "height: 10em" :atm atm})
 
       [:div
        [:label "Images"]
@@ -204,11 +214,11 @@
           (deletable-image pic img-url :pictures atm))]]
 
       (image-upload-area {:atm atm :kw :pictures})
+      [:button#savebtn.btn.waves-effect.waves-light.btn-large {:style "margin-top: 30px;"} "Save"]]]))
 
-      [:div "here we upload and delete pics! Upload just throws it onto s3 and links it in the database."]
-      [:div "do we do DDB stuff here or through a lambda?"]
-      [:button#savebtn "Save"]]]))
 
+(defroute edit-path "/room/new" []
+  (set-html! application (edit-form {})))
 
 (defroute room-path "/room/:room" [room]
   (show-room application (keyword room)))
@@ -219,8 +229,6 @@
     (let [room (merge {:roomid roomid} room*)]
       (set-html! application (edit-form room)))))
 
-(defroute edit-path "/room/new" []
-  (set-html! application (edit-form {:floor 6 :description "test"})))
 
 ;; Catch all
 (defroute "*" []
@@ -245,22 +253,19 @@
                                                                   (go-to-room room-id)))
                                        :triggerOnSingleChoice true}))))))
 
-(defn reload! []
-  (prn "reload")
-  (secretary/dispatch! (str js/window.location.hash)) ;; for reloads
-  (.autocomplete (jquery "input.autocomplete") "destroy")
+(defn load-rooms []
   (fetch-rooms
    (fn []
      (prn "FETCHED ROOMS: " (-> @rooms :rooms keys))
      (hook-autocompleter! (@rooms :rooms))
-     (act-on-url!))))
+     (act-on-url!))) )
+
+(defn reload! []
+  (.autocomplete (jquery "input.autocomplete") "destroy")
+  (load-rooms))
 
 (defn -main []
-  (fetch-rooms
-   (fn []
-     (prn "FETCHED ROOMS: " (-> @rooms :rooms keys))
-     (hook-autocompleter! (@rooms :rooms))
-     (act-on-url!))))
+  (load-rooms))
 
 (comment
   ;; data model

@@ -2,6 +2,7 @@
   (:require [hiccups.runtime :as hiccupsrt]
             [config :refer [env]]
             [promesa.core :as p]
+            [aws]
             [ui :refer [jquery execute-js! add-js set-html! on-event by-id] :as ui])
   (:require-macros [hiccups.core :refer [html]]
                    [promesa.core]))
@@ -9,7 +10,10 @@
 
 (defn input-text
   "An input element which updates its value on change"
-  [{:keys [id type value required placeholder readonly label atm] :as params}]
+  [{:keys [id type value required placeholder readonly label atm transform-save transform-display]
+    :or {transform-display identity
+         transform-save identity}
+    :as params}]
   (let [id      (or id (str (random-uuid)))
         valname (get params :name)
         kwname  (keyword valname)]
@@ -18,7 +22,7 @@
               (ui/on-event (ui/by-id id)
                            "change"
                            (fn [evt]
-                             (swap! atm assoc kwname (ui/event-val evt))))))
+                             (swap! atm assoc kwname (transform-save (ui/event-val evt)))))))
 
     [:span
      (when label
@@ -27,17 +31,14 @@
                      :name  (name (get params :name))
                      :class "form-control"
                      :type  (name type)
-                     :value value
+                     :value (transform-display value)
                      }
-                    (when placeholder {:placeholder (if (and (= type "text")
-                                                             placeholder)
-                                                      placeholder
-                                                      "")})
+                    (when placeholder {:placeholder placeholder})
                     (when required {:required "required"})
                     (when readonly {:readonly "readonly"}))]]))
 
 (defn input-textarea
-  [{:keys [label id type value required readonly rows cols style atm] :as params}]
+  [{:keys [label id type value required readonly rows cols style atm placeholder] :as params}]
   (let [id      (or id (str (random-uuid)))
         valname (get params :name)
         kwname  (keyword valname)]
@@ -58,7 +59,8 @@
                        (when required {:required "required"})
                        (when readonly {:readonly "readonly"})
                        (when rows {:rows rows})
-                       (when cols {:cols cols}))
+                       (when cols {:cols cols})
+                       (when placeholder {:placeholder placeholder}))
       value]]))
 
 (def ^:export my-atom (atom {}))
@@ -92,12 +94,12 @@
   (add-js ; just too lazy to translate
    " dropContainer = document.getElementById('drop-zone');
   dropContainer.ondragover = dropContainer.ondragenter = function(evt) {
-      dropContainer.classList.add('mouse-over');
+    dropContainer.classList.add('mouse-over');
     evt.preventDefault();
   };
 
  dropContainer.ondragleave = function(evt) {
-      dropContainer.classList.remove('mouse-over');
+    dropContainer.classList.remove('mouse-over');
     evt.preventDefault();
   };
 
@@ -111,6 +113,7 @@
             (on-event (by-id "drop-zone")
                       :drop
                       (fn [evt]
+                        (.text (jquery "#drop-zone strong") "Uploading...")
                         (doseq [file (array-seq (.. evt -originalEvent -dataTransfer -files))]
                           (let [file-name (str (random-uuid) ".png")]
                             (p/then
@@ -121,7 +124,8 @@
                                                  (deletable-image file-name
                                                                   (str (env :s3url) file-name)
                                                                   :pictures
-                                                                  atm))))
+                                                                  atm))
+                               (.text (jquery "#drop-zone strong") "Drop new image(s) here")))
                             (prn 'yayfile (.-name file) file-name)))))))
   [:div#drop-zone
    [:strong "Drop new image(s) here"]])
