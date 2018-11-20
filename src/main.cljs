@@ -4,7 +4,7 @@
             [secretary.core :as secretary :refer-macros [defroute]]
             [goog.events :as events]
             [goog.history.EventType :as EventType]
-            [components :refer [input-text input-textarea deletable-image image-upload-area]]
+            [components :refer [input-text input-textarea deletable-image image-upload-area input-switch]]
             [ui :refer [jquery execute-js! add-js set-html! ]]
             [clojure.string :as str]
             [config :refer [env] :as config]
@@ -71,7 +71,8 @@
   (into {}
         (for [[room-id room-val] rooms
               room-name          (room-names room-val)]
-          [room-name room-id])))
+          (when-not (false? (:active room-val))
+            [room-name room-id]))))
 
 
 
@@ -138,9 +139,9 @@
   (->> (conj []
              (when (empty? (trim roomid))
                "You must specify a room id!")
-             (when (and (get-room-data roomid)
-                        (not last-updated))
-               "This room id already exists!")
+             ;; (when (and (get-room-data roomid)
+             ;;            (not last-updated))
+             ;;   "This room id already exists!")
              (when (empty? name)
                "Please enter a room name")
              (when (empty? (trim floor))
@@ -190,9 +191,9 @@
                    :readonly (when roomid true)
                    :type :text
                    :atm atm
-                   :transform-save (fn [s] (-> s
-                                               (trim)
-                                               (str/replace  #"[^A-Za-z0-9-_]" "_")))})
+                   :transform-save #(-> %
+                                       (trim)
+                                       (str/replace  #"[^A-Za-z0-9-_]" "_"))})
 
       (input-text {:label "Room Name"
                    :name "name"
@@ -253,6 +254,14 @@
           (deletable-image pic img-url :pictures atm))]]
 
       (image-upload-area {:atm atm :kw :pictures})
+
+      (input-switch {:label-on "This room exists"
+                     :label-off "This room doesn't exist anymore"
+                     :confirm-off-fn #(.confirm js/window "Are you sure you want to remove this room?")
+                     :confirm-on-fn #(.confirm js/window "Are you sure you want to reactivate this room?")
+                     :style "margin-top: 30px;"
+                     :atm atm} )
+
       [:button#savebtn.btn.waves-effect.waves-light.btn-large {:style "margin-top: 30px;"} "Save"]]]))
 
 

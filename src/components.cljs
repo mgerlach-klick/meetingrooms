@@ -66,6 +66,56 @@
 
      [:span.helper-text {:id (str "helper-" (name id))}]]))
 
+(defn input-switch
+  [{:keys [label-on label-off label id atm confirm-on-fn confirm-off-fn default style]
+    :or   {id (str (random-uuid))
+           default 1
+           style ""}
+    :as   params}]
+
+        (add-js (fn []
+                  (ui/on-event (ui/by-id id)
+                               "change"
+                               (fn [evt]
+                                 (let [checkbox     (.-target evt)
+                                       checked      (.-checked checkbox)
+                                       confirmation (if checked
+                                                      (if confirm-on-fn
+                                                        (confirm-on-fn)
+                                                        checked)
+                                                      (if confirm-off-fn
+                                                        (confirm-off-fn)
+                                                        checked))]
+                                   (prn 'checked checked 'confirmation confirmation)
+                                   (-> (cond (false? confirmation)
+                                             :revert-dont-save
+
+                                             (true? checked)
+                                             :save-on
+
+                                             (false? checked)
+                                             :save-off
+
+                                             :else
+                                             (do
+                                               (throw (js/Error. "I should have been an exhaustive check!!!"))))
+                                       (case
+                                           :save-on (swap! atm assoc :active true)
+                                           :save-off (swap! atm assoc :active false)
+                                           :revert-dont-save (.prop (ui/by-id id) "checked" (not checked)))))))))
+
+  [:div {:style style}
+
+   (when label
+     [:label {:for id :class "active"} label])
+
+   [:div.switch
+    [:label
+     label-off
+     [:input {:type "checkbox" :checked default :id id}]
+     [:span.lever]
+     label-on]]])
+
 (defn deletable-image
   [img-name img-src kw atm]
   (let [close-id (str (random-uuid))]
@@ -123,7 +173,6 @@
                                                                   (str (env :s3url) file-name)
                                                                   :pictures
                                                                   atm))
-                               (.text (jquery "#drop-zone strong") "Drop new image(s) here")))
-                            (prn 'yayfile (.-name file) file-name)))))))
+                               (.text (jquery "#drop-zone strong") "Drop new image(s) here")))))))))
   [:div#drop-zone
    [:strong "Drop new image(s) here"]])
