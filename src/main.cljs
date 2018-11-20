@@ -120,8 +120,8 @@
          [:li
           [:img {:src (str (env :s3url) img)}]])]])
 
-   [:span.right.valign-wrapper
-    [:a.right.small.blue-text {:href (str "#/room/" (name (:roomid room)) "/edit")} (ui/icon :create :tiny) " Edit this room"]]
+   [:div.right.valign-wrapper {:style "margin-top: 20px;"}
+    [:a.right.small.blue-text {:href (str "#/room/" (name (:roomid room)) "/edit") } (ui/icon :create :tiny) " Edit this room"]]
    ])
 
 

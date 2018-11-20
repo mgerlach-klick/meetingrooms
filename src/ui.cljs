@@ -60,7 +60,7 @@
 
 (defn icon
   ([icon-name size orientation]
-   [:i {:class (str "material-icons " (name size) " " (name orientati))} (name icon-name)])
+   [:i {:class (str "material-icons " (name size) " " (name orientation))} (name icon-name)])
   ([icon-name size]
    [:i {:class (str "material-icons " (name size))} (name icon-name)])
   ([icon-name]
