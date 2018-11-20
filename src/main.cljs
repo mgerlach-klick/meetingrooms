@@ -37,8 +37,10 @@
                "th"))))))
 
 (defn trim [s]
-  (when s
-    (str/trim s)))
+  (cond
+    (nil? s) nil
+    (string? s) (str/trim s)
+    :else s))
 
 (defn print-promise
   "For internal use only"
@@ -144,7 +146,7 @@
              ;;   "This room id already exists!")
              (when (empty? name)
                "Please enter a room name")
-             (when (empty? (trim floor))
+             (when (or (nil? floor) (= "" floor))
                "Please enter a floor")
              (when (empty? (trim description))
                "Please enter walking instructions. That's the whole point!"))
@@ -152,9 +154,10 @@
        (seq)))
 
 (defn Edit-Room
-  [{:keys [roomid name tower floor aliases description pictures] :as room}]
+  [{:keys [roomid name tower floor aliases description pictures active] :as room}]
   (let [atm (atom room)]
 
+    (prn 'Editing room)
 
     (add-js (fn []
               (ui/on-click (ui/by-id :savebtn)
@@ -260,6 +263,7 @@
                      :confirm-off-fn #(.confirm js/window "Are you sure you want to remove this room?")
                      :confirm-on-fn #(.confirm js/window "Are you sure you want to reactivate this room?")
                      :style "margin-top: 30px;"
+                     :value (if (false? active) false true)
                      :atm atm} )
 
       [:button#savebtn.btn.waves-effect.waves-light.btn-large {:style "margin-top: 30px;"} "Save"]]]))

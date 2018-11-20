@@ -67,7 +67,7 @@
      [:span.helper-text {:id (str "helper-" (name id))}]]))
 
 (defn input-switch
-  [{:keys [label-on label-off label id atm confirm-on-fn confirm-off-fn default style]
+  [{:keys [label-on label-off label id atm confirm-on-fn confirm-off-fn default style value]
     :or   {id (str (random-uuid))
            default 1
            style ""}
@@ -112,7 +112,7 @@
    [:div.switch
     [:label
      label-off
-     [:input {:type "checkbox" :checked default :id id}]
+     [:input {:type "checkbox" :checked (or value default true) :id id}]
      [:span.lever]
      label-on]]])
 
