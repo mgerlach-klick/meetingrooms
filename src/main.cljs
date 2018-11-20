@@ -103,7 +103,7 @@
                                    "indicators" (-> pictures
                                                     count
                                                     (> 1))})))
-            (js/window.scrollTo 0 0)))
+            (ui/scroll-up)))
 
   [:div (room-header room)
 
@@ -177,7 +177,8 @@
                                             :showConfirmButton false
                                             :timer 1000)
                                   #(go-to-room roomid))))
-                             false))))
+                             false))
+              (ui/scroll-up)))
 
     [:div
      [:form {:id :edit-form}
@@ -265,6 +266,8 @@
       [:button#savebtn.btn.waves-effect.waves-light.btn-large {:style "margin-top: 30px;"} "Save"]]]))
 
 (defn Room-List [rooms-map]
+  (add-js (fn []
+            (ui/scroll-up)))
   (let [rooms (->> rooms-map seq (map second))]
     [:table.highlight
      [:thead
@@ -358,7 +361,7 @@
 (defroute home-path "/" []
   (display! (Home)))
 
-(defroute edit-path "/room/new" []
+(defroute edit-path "/newroom" []
   (display! (Edit-Room {})))
 
 (defroute room-path "/room/:roomid" [roomid]
