@@ -96,7 +96,7 @@
     ]])
 
 (defn Room
-  [{:keys [pictures aliases description moreinfo roomid] :as room}]
+  [{:keys [pictures aliases instructions roomid] :as room}]
   (add-js (fn []
             (-> (jquery ".slider")
                 (.slider (clj->js {"full_width" false
@@ -111,7 +111,7 @@
      [:p.grey-text "aka: " (apply str (interpose ", " aliases))])
 
    [:div.section
-    [:p.flow-text description]]
+    [:p.flow-text instructions]]
 
    (when-not (empty? pictures)
      [:div.slider
@@ -119,12 +119,6 @@
        (for [img pictures]
          [:li
           [:img {:src (str (env :s3url) img)}]])]])
-
-   (when-not (empty? moreinfo)
-     [:ul "More information:"
-      (for [info moreinfo]
-        [:li
-         [:a {:href info} info ]])])
 
    [:span.right.valign-wrapper
     [:a.right.small.blue-text {:href (str "#/room/" (name (:roomid room)) "/edit")} (ui/icon :create :tiny) " Edit this room"]]
@@ -139,7 +133,7 @@
    [:p.section.flow-text "Please also help by contributing to this site by offering corrections, better instructions, additions, comments, and all that. There is a link through which you can email at the bottom of every page."]])
 
 (defn validate-room-input
-  [{:keys [roomid name tower floor aliases description last-updated] :as room}]
+  [{:keys [roomid name tower floor aliases instructions last-updated] :as room}]
   (->> (conj []
              (when (empty? (trim roomid))
                "You must specify a room id!")
@@ -150,13 +144,13 @@
                "Please enter a room name")
              (when (or (nil? floor) (= "" floor))
                "Please enter a floor")
-             (when (empty? (trim description))
+             (when (empty? (trim instructions))
                "Please enter walking instructions. That's the whole point!"))
        (remove nil?)
        (seq)))
 
 (defn Edit-Room
-  [{:keys [roomid name tower floor aliases description pictures active] :as room}]
+  [{:keys [roomid name tower floor aliases instructions pictures active] :as room}]
   (let [atm (atom room)]
 
     (prn 'Editing room)
@@ -243,9 +237,9 @@
 
       (input-textarea {:label "Walking Instructions"
                        :required true
-                       :name "description"
+                       :name "instructions"
                        :placeholder "Walking instructions for humans to find the room, e.g. 'Take the door opposite of the kitchen, take a left, pass the ping pong table, then the room is on your left'"
-                       :value description
+                       :value instructions
                        :type :textarea
                        :rows 6
                        :style "height: 10em"
@@ -270,6 +264,27 @@
 
       [:button#savebtn.btn.waves-effect.waves-light.btn-large {:style "margin-top: 30px;"} "Save"]]]))
 
+(defn Room-List [rooms-map]
+  (let [rooms (->> rooms-map seq (map second))]
+    [:table.highlight
+     [:thead
+      [:tr
+       [:th "ID"]
+       [:th "Name"]
+       [:th "Tower"]
+       [:th "Floor"]
+       [:th "Active"]]]
+     [:tbody
+      (for [room rooms
+            :let [{:keys [roomid floor tower active]} room
+                  roomlink (fn [roomid txt]
+                             [:a {:href (str "#/room/" (name roomid))} txt])]]
+        [:tr
+         [:td (roomlink roomid roomid)]
+         [:td (roomlink roomid (get room :name))]
+         [:td tower]
+         [:td floor]
+         [:td active]])]]))
 
 (defn Not-Found []
   [:p.flow-text "This doesn't look like anything to me..."])
@@ -357,6 +372,11 @@
          (Not-Found))
        (display!)))
 
+
+(defroute room-list-path "/roomlist" []
+  (display! (Room-List (:rooms @rooms))))
+
+
 (defroute "*" []
   (display! (Not-Found)))
 
@@ -386,13 +406,13 @@
 (comment
   ;; data model
   {:version "date"
-   :rooms   {:roomname {:name        "Name"
+   :rooms   {:roomname {:roomid      "room123N7"
+                        :name        "Name"
                         :floor       7
                         :tower       "North"
                         :aliases     ["other" "room" "names"]
-                        :pictures    ["picturename"]
-                        :description "More info about the name"
-                        :moreinfo    ["Links" "or text"]
+                        :pictures    #{"picturename"}
+                        :instructions "More info about the name"
                         :active      true
                         :last-update "Date"}}}
   )
