@@ -24,18 +24,19 @@
                            (fn [evt]
                              (swap! atm assoc kwname (transform-save (ui/event-val evt)))))))
 
-    [:span
-     (when label
-       [:label {:for id} label])
+    [:div.input-field
      [:input (merge {:id    (name id)
                      :name  (name (get params :name))
-                     :class "form-control"
+                     :class "validate"
                      :type  (name type)
-                     :value (transform-display value)
-                     }
+                     :value (transform-display value)}
                     (when placeholder {:placeholder placeholder})
                     (when required {:required "required"})
-                    (when readonly {:readonly "readonly"}))]]))
+                    (when readonly {:readonly "readonly"}))]
+     (when label
+       [:label {:for id :class "active"} label])
+
+     [:span.helper-text {:id (str "helper-" (name id))}]]))
 
 (defn input-textarea
   [{:keys [label id type value required readonly rows cols style atm placeholder] :as params}]
@@ -47,21 +48,23 @@
                            "change"
                            (fn [evt]
                              (swap! atm assoc kwname (ui/event-val evt))))))
-    [:span
-     (when label
-       [:label {:for id} label])
+    [:div.input-field
      [:textarea (merge {:id    (name id)
                         :name  (name valname)
-                        :class "form-control"
+                        :class "validate materialize-textarea"
                         :type  (name type)
-                        :style style
-                        }
+                        :style style}
                        (when required {:required "required"})
                        (when readonly {:readonly "readonly"})
                        (when rows {:rows rows})
                        (when cols {:cols cols})
                        (when placeholder {:placeholder placeholder}))
-      value]]))
+      value]
+
+     (when label
+       [:label {:for id :class "active"} label])
+
+     [:span.helper-text {:id (str "helper-" (name id))}]]))
 
 (defn deletable-image
   [img-name img-src kw atm]

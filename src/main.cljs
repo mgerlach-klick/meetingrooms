@@ -36,6 +36,10 @@
                3 "rd"
                "th"))))))
 
+(defn trim [s]
+  (when s
+    (str/trim s)))
+
 (defn print-promise
   "For internal use only"
   [p]
@@ -129,25 +133,50 @@
    [:p.section.flow-text "Feel free to link directly to the URLs of the meeting rooms, I will keep the URLs stable."]
    [:p.section.flow-text "Please also help by contributing to this site by offering corrections, better instructions, additions, comments, and all that. There is a link through which you can email at the bottom of every page."]])
 
+(defn validate-room-input
+  [{:keys [roomid name tower floor aliases description last-updated] :as room}]
+  (->> (conj []
+             (when (empty? (trim roomid))
+               "You must specify a room id!")
+             (when (and (get-room-data roomid)
+                        (not last-updated))
+               "This room id already exists!")
+             (when (empty? name)
+               "Please enter a room name")
+             (when (empty? (trim floor))
+               "Please enter a floor")
+             (when (empty? (trim description))
+               "Please enter walking instructions. That's the whole point!"))
+       (remove nil?)
+       (seq)))
 
 (defn Edit-Room
   [{:keys [roomid name tower floor aliases description pictures] :as room}]
   (let [atm (atom room)]
+
+
     (add-js (fn []
               (ui/on-click (ui/by-id :savebtn)
                            (fn [e]
                              (.preventDefault e)
-                             (let [roomid         (get @atm :roomid)
-                                   new-room-state (assoc @atm :last-updated (js/Date.))]
-                               (prn 'Updating roomid new-room-state)
-                               (update-room roomid new-room-state)
-                               (.then
-                                (ui/alert :title "Saved!"
-                                          :type "success"
-                                          :showCancelButton false
-                                          :showConfirmButton false
-                                          :timer 1000)
-                                #(go-to-room roomid)))
+                             (prn 'Updating roomid @atm)
+                             (if-let [errors (validate-room-input @atm)]
+                               (do
+                                 (prn 'errors errors)
+                                 (ui/alert :type "error"
+                                           :title "Bad Input"
+                                           :text (first errors)))
+                               ;;else
+                               (let [roomid         (get @atm :roomid)
+                                     new-room-state (assoc @atm :last-updated (js/Date.))]
+                                 (update-room roomid new-room-state)
+                                 (.then
+                                  (ui/alert :title "Saved!"
+                                            :type "success"
+                                            :showCancelButton false
+                                            :showConfirmButton false
+                                            :timer 1000)
+                                  #(go-to-room roomid))))
                              false))))
 
     [:div
@@ -161,7 +190,9 @@
                    :readonly (when roomid true)
                    :type :text
                    :atm atm
-                   :transform-save (fn [s] (str/replace s #"[^A-Za-z0-9-_]" "_"))})
+                   :transform-save (fn [s] (-> s
+                                               (trim)
+                                               (str/replace  #"[^A-Za-z0-9-_]" "_")))})
 
       (input-text {:label "Room Name"
                    :name "name"
@@ -169,6 +200,7 @@
                    :placeholder
                    "e.g. 'Fuji' or 'Wellness Centre'"
                    :value name
+                   :transform-save trim
                    :type :text
                    :atm atm})
 
@@ -194,8 +226,14 @@
                    :value aliases
                    :type :text
                    :atm atm
-                   :transform-save (fn [s] (str/split s #",\s*"))
-                   :transform-display (fn [arr] (str/join ", " arr))})
+                   :transform-save (fn [s]
+                                     (if-not (= "" (trim s))
+                                       (str/split (trim s) #",\s*")
+                                       []))
+                   :transform-display (fn [arr]
+                                        (if-not (empty? arr)
+                                          (str/join ", " arr)
+                                          ""))})
 
       (input-textarea {:label "Walking Instructions"
                        :required true
