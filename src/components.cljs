@@ -63,11 +63,6 @@
                        (when placeholder {:placeholder placeholder}))
       value]]))
 
-(def ^:export my-atom (atom {}))
-
-(defn ^:export printatom []
-  (prn @my-atom))
-
 (defn deletable-image
   [img-name img-src kw atm]
   (let [close-id (str (random-uuid))]

@@ -52,3 +52,8 @@
   (.append el (html hcp))
   (execute-js! @+javascripts+)
   (reset! +javascripts+ []))
+
+(defn alert [& params ]
+  (js/swal (->> (apply hash-map params)
+                (merge {:type "success"})
+                (clj->js))))
