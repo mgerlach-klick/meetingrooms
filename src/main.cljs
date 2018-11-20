@@ -83,15 +83,17 @@
 
 (defn room-header
   [room]
-  [:h4.header {:style "display: inline" } (:name room)
-   [:br.hide-on-med-and-up]
-   [:h5.grey-text  {:style "display: inline" }
-    " ("
-    (when (:floor room)
-      (str (nthify (:floor room)) " "))
-    (when (:tower room)
-      (:tower room))
-    ")"]])
+  [:span
+   [:h4.header {:style "display: inline" } (:name room)
+    [:br.hide-on-med-and-up]
+    [:h5.grey-text  {:style "display: inline" }
+     " ("
+     (when (:floor room)
+       (str (nthify (:floor room)) " "))
+     (when (:tower room)
+       (:tower room))
+     ")"]
+    ]])
 
 (defn Room
   [{:keys [pictures aliases description moreinfo roomid] :as room}]
@@ -124,9 +126,9 @@
         [:li
          [:a {:href info} info ]])])
 
-   [:hr]
-   [:a.right {:href (str "#/room/" (name roomid) "/edit")}
-    "Edit this page"]])
+   [:span.right.valign-wrapper
+    [:a.right.small.blue-text {:href (str "#/room/" (name (:roomid room)) "/edit")} (ui/icon :create :tiny) " Edit this room"]]
+   ])
 
 
 (defn Home []
