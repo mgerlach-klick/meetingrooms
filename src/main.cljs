@@ -405,9 +405,11 @@
 
 
 (defn reload! []
+  (prn (str"*****" (env :environment) "*****"))
   (fetch-rooms))
 
 (defn -main []
+  (prn (str"*****" (env :environment) "*****"))
   (fetch-rooms))
 
 (comment

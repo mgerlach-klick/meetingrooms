@@ -6,7 +6,7 @@
  [[funcool/promesa "1.9.0"]
   [hiccups "0.3.0"]
   [clj-commons/secretary "1.2.4"]
-  [cider/cider-nrepl "0.16.0-SNAPSHOT"]]
+  [cider/cider-nrepl "0.18.0"]]
 
  :nrepl {:port 8202}
 
@@ -15,6 +15,8 @@
         :output-dir "public/js"
         :asset-path "/js"
         :modules    {:main {:init-fn main/-main}}
+        :dev {:closure-defines {config/ENVIRONMENT "dev"}}
+        :release {:closure-defines {config/ENVIRONMENT "prod"}}
         :devtools
         {:http-root "public"
          :http-port 8020
