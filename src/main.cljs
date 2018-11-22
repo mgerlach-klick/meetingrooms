@@ -40,6 +40,7 @@
   (cond
     (nil? s) nil
     (string? s) (str/trim s)
+    (keyword? s) (-> s name)
     :else s))
 
 (defn print-promise
