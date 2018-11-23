@@ -1,5 +1,6 @@
 (ns utils
-  (:require [promesa.core :as p])
+  (:require [promesa.core :as p]
+            [clojure.string :as str])
   (:require-macros [promesa.core]))
 
 (defn resize [image-file max-width max-height cb]

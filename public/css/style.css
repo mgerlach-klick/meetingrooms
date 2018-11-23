@@ -54,9 +54,9 @@
 
 /*Important*/
 #drop-zone.mouse-over {
-    border: 2px dashed red;// rgba(0,0,0,.5);
+    border: 2px dashed lightgreen;// rgba(0,0,0,.5);
     /* color: rgba(0,0,0,.5); */
-    color: red;
+    color: lightgreen;
 }
 
 #drop-zone:hover{

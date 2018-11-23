@@ -6,8 +6,8 @@
             [goog.history.EventType :as EventType]
             [components :refer [input-text input-textarea deletable-image image-upload-area input-switch]]
             [ui :refer [jquery execute-js! add-js set-html! ]]
-            [clojure.string :as str]
             [config :refer [env] :as config]
+            [clojure.string :as str]
             [aws]
             [utils :refer [nthify trim print-promise]])
   (:require-macros [promesa.core])
@@ -103,13 +103,14 @@
    [:p.section.flow-text "Please also help by contributing to this site by offering corrections, better instructions, additions, comments, and all that. There is a link through which you can email at the bottom of every page."]])
 
 (defn validate-room-input
-  [{:keys [roomid name tower floor aliases instructions last-updated] :as room}]
+  [{:keys [roomid name tower floor aliases instructions last-updated] :as room}
+   original-data]
   (->> (conj []
              (when (empty? (trim roomid))
                "You must specify a room id!")
-             ;; (when (and (get-room-data roomid)
-             ;;            (not last-updated))
-             ;;   "This room id already exists!")
+             (when (and (get-room-data roomid) ;room already exists
+                        (nil? (get original-data :roomid))) ; this is a new room
+               "This room id already exists!")
              (when (empty? name)
                "Please enter a room name")
              (when (or (nil? floor) (= "" floor))
@@ -130,7 +131,7 @@
                            (fn [e]
                              (.preventDefault e)
                              (prn 'Updating roomid @atm)
-                             (if-let [errors (validate-room-input @atm)]
+                             (if-let [errors (validate-room-input @atm room)]
                                (do
                                  (prn 'errors errors)
                                  (ui/alert :type "error"
