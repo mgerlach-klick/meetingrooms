@@ -3,6 +3,7 @@
             [config :refer [env]]
             [promesa.core :as p]
             [aws]
+            [utils]
             [ui :refer [jquery execute-js! add-js set-html! on-event by-id] :as ui])
   (:require-macros [hiccups.core :refer [html]]
                    [promesa.core]))
@@ -163,16 +164,15 @@
                       (fn [evt]
                         (.text (jquery "#drop-zone strong") "Uploading...")
                         (doseq [file (array-seq (.. evt -originalEvent -dataTransfer -files))]
-                          (let [file-name (str (random-uuid) ".png")]
-                            (p/then
-                             (aws/upload-image& (env :bucket-name) (str "pics/" file-name) file)
-                             (fn []
-                               (swap! atm update-in [kw] conj file-name)
-                               (ui/append-hiccup (ui/by-id "image-container")
-                                                 (deletable-image file-name
-                                                                  (str (env :s3url) file-name)
-                                                                  :pictures
-                                                                  atm))
-                               (.text (jquery "#drop-zone strong") "Drop new image(s) here")))))))))
+                          (p/alet [file-name (str (random-uuid) ".png")
+                                   resized-img (p/await (utils/resize& file 1000 1000))
+                                   _ (p/await (aws/upload-image& (env :bucket-name) (str "pics/" file-name) resized-img))]
+                                  (swap! atm update-in [kw] conj file-name)
+                                  (ui/append-hiccup (ui/by-id "image-container")
+                                                    (deletable-image file-name
+                                                                     (str (env :s3url) file-name)
+                                                                     :pictures
+                                                                     atm))
+                                  (.text (jquery "#drop-zone strong") "Drop new image(s) here")))))))
   [:div#drop-zone
    [:strong "Drop new image(s) here"]])

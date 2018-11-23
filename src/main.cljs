@@ -8,7 +8,8 @@
             [ui :refer [jquery execute-js! add-js set-html! ]]
             [clojure.string :as str]
             [config :refer [env] :as config]
-            [aws])
+            [aws]
+            [utils :refer [nthify trim print-promise]])
   (:require-macros [promesa.core])
   (:import goog.history.Html5History))
 
@@ -17,38 +18,6 @@
          act-on-url!
          history
          hook-autocompleter!)
-
-
-;; -------------------------
-;; Utilities
-
-(defn nthify
-  "Handle the weird 1st, 2nd, 3rd thing in English"
-  [n]
-  (when n
-    (str n
-         (let [rem (mod n 100)]
-           (if (and (>= rem 11) (<= rem 13))
-             "th"
-             (condp = (mod n 10)
-               1 "st"
-               2 "nd"
-               3 "rd"
-               "th"))))))
-
-(defn trim [s]
-  (cond
-    (nil? s) nil
-    (string? s) (str/trim s)
-    (keyword? s) (-> s name)
-    :else s))
-
-(defn print-promise
-  "For internal use only"
-  [p]
-  (-> p
-      (p/then #(prn 'SUCCESS %))
-      (p/catch #(prn 'FAIL %))))
 
 
 ;; -------------------------
