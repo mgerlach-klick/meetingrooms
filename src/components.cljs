@@ -6,7 +6,8 @@
             [utils]
             [ui :refer [jquery execute-js! add-js set-html! on-event by-id] :as ui])
   (:require-macros [hiccups.core :refer [html]]
-                   [promesa.core]))
+                   [promesa.core])
+  (:import goog.userAgent))
 
 
 (defn input-text
@@ -137,7 +138,33 @@
      [:img {:src   img-src
             :style "position: relative; max-width: 200px; max-height: 200px;"}]]))
 
-(defn image-upload-area
+(defn image-upload-area-mobile
+  "Show current images and allow deletion. Add new images."
+  [{:keys [atm kw id]}]
+ (add-js (fn []
+            (on-event (by-id "capture-image")
+                      :change
+                      (fn [evt]
+                        (.text (jquery "#capture strong") "Uploading...")
+                        (prn evt)
+                        (doseq [file (array-seq (.. evt -target -files))]
+                          (p/alet [file-name (str (random-uuid) ".png")
+                                   resized-img (p/await (utils/resize& file 1000 1000))
+                                   _ (p/await (aws/upload-image& (env :bucket-name) (str "pics/" file-name) resized-img))]
+                                  (swap! atm update-in [kw] conj file-name)
+                                  (ui/append-hiccup (ui/by-id "image-container")
+                                                    (deletable-image file-name
+                                                                     (str (env :s3url) file-name)
+                                                                     :pictures
+                                                                     atm))
+                                  (.val (by-id "capture-image") "")
+                                  (.text (jquery "#capture strong") "Upload or take a picture!")))))))
+  [:div#capture
+   [:strong "Upload or take a picture!"]
+   [:input {:type "file" :accept "image/*;capture=camera" :id "capture-image"}]]
+  )
+
+(defn image-upload-area-desktop
   "Show current images and allow deletion. Add new images."
   [{:keys [atm kw id]}]
   (add-js ; just too lazy to translate
@@ -176,3 +203,10 @@
                                   (.text (jquery "#drop-zone strong") "Drop new image(s) here")))))))
   [:div#drop-zone
    [:strong "Drop new image(s) here"]])
+
+(defn image-upload-area
+  "Show current images and allow deletion. Add new images."
+  [opts]
+  (if goog.userAgent.MOBILE
+    (image-upload-area-mobile opts)
+    (image-upload-area-desktop opts)))
